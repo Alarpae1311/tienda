@@ -1,4 +1,4 @@
-Para crear la infraestructura nos instalamos Jenkins:
+Para crear la infraestructura:
 
 1- Nos instalamos Jenkins, ya sea en un contenedor o localmente.
 
