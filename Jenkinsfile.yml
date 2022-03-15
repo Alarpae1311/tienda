@@ -1,5 +1,5 @@
 pipeline {
-            agent {label 'vps'}
+            agent {label 'iaw'}
                 stages {
                         stage('Descargar ficheros configuración') {
                             steps {
@@ -12,28 +12,27 @@ pipeline {
                         stage('Montar infraestructura docker') {
                             steps {
                                 echo 'Desplegando contenedores Docker...'
-                                sh 'cd scripts && docker-compose up -d'
+                                sh 'docker-compose up -d'
                             }
                         }
                         stage('Ejecutar scripts BBDD') {
                             steps {
                                 echo 'Montando la base de datos...'
-                                sh 'docker exec scripts_bbdd_1 mysqldump -u root -p secret iaw_db < CrearTablaCliente.sql'
-                                sh 'docker exec scripts_bbdd_1 mysqldump -u root -p secret iaw_db < CrearTablaProducto.sql'
-                                sh 'docker exec scripts_bbdd_1 mysqldump -u root -p secret iaw_db < CrearTablaProveedor.sql'
+                                sh 'docker exec scripts_bbdd_1 sh -c "mysql -u root -psecret iaw_db < /dump/CrearTablaCliente.sql" || true'
+                                sh 'docker exec scripts_bbdd_1 sh -c "mysql -u root -psecret iaw_db < /dump/CrearTablaProducto.sql || true'
+                                sh 'docker exec scripts_bbdd_1 sh -c "mysql -u root -psecret iaw_db < CrearTablaProveedor.sql || true'
                             }
                         }
                         stage('Copiar código PHP') {
                             steps {
                                 echo 'Copiando el código PHP...'
-                                sh 'cp php /var/www/html/'
+                                sh 'cp php/* web/'
                             }
                         }
                         stage('Ejecutando gestión de dependencias') {
                             steps {
                                 echo 'Ejecutando gestión de dependencias con composer...'
-                                sh 'composer install --ignore-platform-reqs --no-scripts --no-dev --no-interaction --no-progress'
-                                sh 'composer dump-autoload --optimize --no-interaction'
+                                sh 'cd web/ && composer install || true'
                             }
                         }                                
                 }
