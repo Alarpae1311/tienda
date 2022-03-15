@@ -1,0 +1,54 @@
+pipeline {
+            agent {label 'vps'}
+                stages {
+                        stage('Descargar ficheros configuración') {
+                            steps {
+                                echo 'Descargando...'
+                                sh 'rm -R .* || true'
+                                sh 'rm -R * || true'
+                                sh 'git clone https://github.com/Alarpae1311/tienda.git .'
+                            }
+                        }
+                        stage('Montar infraestructura docker') {
+                            steps {
+                                echo 'Desplegando contenedores Docker...'
+                                sh 'cd scripts && docker-compose up -d'
+                            }
+                        }
+                        stage('Ejecutar scripts BBDD') {
+                            steps {
+                                echo 'Montando la base de datos...'
+                                sh 'docker exec scripts_bbdd_1 mysqldump -u root -p secret iaw_db < CrearTablaCliente.sql'
+                                sh 'docker exec scripts_bbdd_1 mysqldump -u root -p secret iaw_db < CrearTablaProducto.sql'
+                                sh 'docker exec scripts_bbdd_1 mysqldump -u root -p secret iaw_db < CrearTablaProveedor.sql'
+                            }
+                        }
+                        stage('Copiar código PHP') {
+                            steps {
+                                echo 'Copiando el código PHP...'
+                                sh 'cp php /var/www/html/'
+                            }
+                        }
+                        stage('Ejecutando gestión de dependencias') {
+                            steps {
+                                echo 'Ejecutando gestión de dependencias con composer...'
+                                sh 'composer install --ignore-platform-reqs --no-scripts --no-dev --no-interaction --no-progress'
+                                sh 'composer dump-autoload --optimize --no-interaction'
+                            }
+                        }                                
+                }
+            post {
+                always {
+                    echo 'Pipeline en ejecución'
+                }
+                success {
+                    echo 'Parece que todo ha ido bien'
+                }
+                failure {
+                    echo 'Algo ha fallado'
+                    mail to: 'alarpae1311@g.educaand.es',
+                         subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
+                         body: "Algo ha fallado con ${env.BUILD_URL}"
+                }
+            }
+        }
